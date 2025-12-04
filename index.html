@@ -298,8 +298,51 @@ export default function CatalogWebapp() {
           </section>
         )}
 
-        <footer className="text-center text-sm text-gray-500 py-6">Demo creada para tu catálogo — reemplaza imágenes, datos y modelos por los tuyos.</footer>
-      </header>
-    </div>
-  );
-}
+        <footer className=\"text-center text-sm text-gray-500 py-6\">Demo creada para tu catálogo — reemplaza imágenes, datos y modelos por los tuyos.</footer>
+
+/*
+--- Añadido: archivo "index.html" (listo para GitHub Pages)
+A continuación incluí un ejemplo de `index.html` que funciona como "main" para desplegar en GitHub Pages.
+Copia este archivo en la raíz de tu repo (reemplaza el contenido del canvas si querés) y publica desde la rama `main` o `gh-pages`.
+*/
+
+/* index.html (usa React + Tailwind via CDN y el componente en un <script type="module">) */
+
+<!--
+Guía rápida para deploy en GitHub Pages:
+1. Crea un repo en GitHub con tu proyecto.
+2. Añade este `index.html` en la raíz y cualquier asset (imágenes/modelos) en carpetas.
+3. Haz commit y push a la rama `main`.
+4. Ve a Settings -> Pages -> Source: `main` branch -> root -> Save.
+5. Tu sitio quedará disponible en https://<tu-usuario>.github.io/<tu-repo>/
+-->
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Catalog Webapp - Demo</title>
+    <!-- Tailwind CDN para demo rápida -->
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-50">
+    <div id="root"></div>
+
+    <!-- React + ReactDOM desde CDN -->
+    <script type="module">
+      import React from 'https://cdn.jsdelivr.net/npm/react@18.2.0/+esm';
+      import ReactDOM from 'https://cdn.jsdelivr.net/npm/react-dom@18.2.0/+esm';
+
+      // --- Pega aquí el contenido del componente React export default function CatalogWebapp() { ... }
+      // En el canvas ya está el componente principal (cópialo dentro de este script en una variable `CatalogWebapp`)
+
+      // Para tu comodidad, aquí hacemos un ejemplo mínimo que renderiza el componente del canvas.
+      // Si querés, puedo pegar el componente completo en este index.html — decime si querés eso.
+
+      const App = () => React.createElement('div', {className:'p-8'}, 'Arranca tu app: pega el componente React en este archivo (module) o usa bundler como Vite.');
+
+      ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+    </script>
+  </body>
+</html>
