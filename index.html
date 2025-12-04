@@ -1,348 +1,192 @@
-/*
-Catalog Webapp (single-file React component)
-- Uses Tailwind CSS utility classes for styling
-- Shows suppliers (categories) on homepage; click supplier to filter products
-- Product cards with images (Unsplash placeholders)
-- Simple product carousel for featured items
-- Three.js viewer area where you can show GLTF/GLB models (public URLs)
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Catálogo 3D</title>
+  <!-- Tailwind CSS (solo para prototipo en GitHub Pages) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React + ReactDOM desde jsDelivr (ESM) -->
+  <script type="module">
+    import React from 'https://cdn.jsdelivr.net/npm/react@18.2.0/+esm';
+    import ReactDOM from 'https://cdn.jsdelivr.net/npm/react-dom@18.2.0/+esm';
 
-How to use:
-1. Create a React app (Vite or Create React App).
-2. Add Tailwind CSS to the project (or keep classes and include Tailwind CDN for quick demo).
-3. Paste this component into a file (e.g. src/App.jsx) and import into index.
-4. To show 3D models, provide public GLTF/GLB URLs in product.modelUrl.
+    // Three.js y GLTFLoader desde jsDelivr
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.154.0/build/three.module.js';
+    import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.154.0/examples/jsm/loaders/GLTFLoader.js';
 
-This component is intentionally self-contained and example-driven so you can replace data and images.
-*/
+    // Componente del visor 3D
+    function ModelViewer({ modelUrl }) {
+      const mountRef = React.useRef(null);
+      const [error, setError] = React.useState(null);
 
-import React, { useEffect, useRef, useState } from "react";
-
-export default function CatalogWebapp() {
-  // --- Sample data (replace with your own, or fetch from an API/GitHub file) ---
-  const suppliers = [
-    { id: "samsung", name: "Samsung", color: "bg-blue-500" },
-    { id: "tesla", name: "Tesla", color: "bg-red-500" },
-    { id: "apple", name: "Apple", color: "bg-gray-800 text-white" },
-    { id: "acme", name: "Acme Corp", color: "bg-green-600" },
-  ];
-
-  const products = [
-    {
-      id: "p1",
-      supplier: "samsung",
-      title: "Galaxy Super TV",
-      price: "$1,299",
-      img: "https://images.unsplash.com/photo-1555617117-08fda6c3d8b4?q=80&w=1200&auto=format&fit=crop&ixlib=rb-4.0.3&s=8d0a1b8d02b4b8d1f0f9b3e6c6e5f3c8",
-      featured: true,
-      modelUrl: "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Duck/glTF/Duck.gltf"
-    },
-    {
-      id: "p2",
-      supplier: "tesla",
-      title: "Model Z Toy Car",
-      price: "$249",
-      img: "https://images.unsplash.com/photo-1511919884226-fd3cad34687c?q=80&w=1200&auto=format&fit=crop&ixlib=rb-4.0.3&s=1de3c6b4b8b3f6b6c8d2a0c6d4b6a8f2",
-      featured: true,
-      modelUrl: ""
-    },
-    {
-      id: "p3",
-      supplier: "apple",
-      title: "Phone Pro Max",
-      price: "$999",
-      img: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=1200&auto=format&fit=crop&ixlib=rb-4.0.3&s=3c1b6f1b1d3d4b5a6c7d8e9f0a1b2c3d",
-      featured: false,
-      modelUrl: ""
-    },
-    {
-      id: "p4",
-      supplier: "acme",
-      title: "Industrial Widget",
-      price: "$49",
-      img: "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1200&auto=format&fit=crop&ixlib=rb-4.0.3&s=7a2b3c4d5e6f1a2b3c4d5e6f7a8b9c0d",
-      featured: false,
-      modelUrl: ""
-    }
-  ];
-
-  // --- State ---
-  const [activeSupplier, setActiveSupplier] = useState(null); // null=all
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [featuredIndex, setFeaturedIndex] = useState(0);
-
-  const featured = products.filter((p) => p.featured);
-  const visibleProducts = activeSupplier ? products.filter((p) => p.supplier === activeSupplier) : products;
-
-  // --- Carousel auto-advance for featured ---
-  useEffect(() => {
-    const t = setInterval(() => {
-      setFeaturedIndex((i) => (i + 1) % (featured.length || 1));
-    }, 4000);
-    return () => clearInterval(t);
-  }, [featured.length]);
-
-  // --- Three.js viewer hook ---
-  function useThreeViewer(modelUrl, mountRef) {
-    useEffect(() => {
-      if (!mountRef.current) return;
-      let mounted = true;
-      let renderer, scene, camera, mixer, clock;
-      let requestId;
-
-      async function init() {
-        // dynamic import of three and loader to keep bundle small and avoid SSR issues
-        const THREE = await import('https://cdn.jsdelivr.net/npm/three@0.154.0/build/three.module.js');
-        const { GLTFLoader } = await import('https://cdn.jsdelivr.net/npm/three@0.154.0/examples/jsm/loaders/GLTFLoader.js');
-
-        const width = mountRef.current.clientWidth || 400;
-        const height = mountRef.current.clientHeight || 300;
-
-        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.setSize(width, height);
+      React.useEffect(() => {
+        if (!modelUrl) return;
+        setError(null);
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf0f0f0);
+        const camera = new THREE.PerspectiveCamera(45, mountRef.current.clientWidth / mountRef.current.clientHeight, 0.1, 1000);
+        camera.position.set(0, 0, 5);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight);
         mountRef.current.innerHTML = '';
         mountRef.current.appendChild(renderer.domElement);
 
-        scene = new THREE.Scene();
-        camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-        camera.position.set(0, 1.5, 3);
+        const loader = new GLTFLoader();
+        loader.load(
+          modelUrl,
+          (gltf) => {
+            scene.add(gltf.scene);
+          },
+          undefined,
+          (err) => {
+            console.error('Error al cargar el modelo 3D:', err);
+            setError('No se pudo cargar el modelo 3D.');
+          }
+        );
 
-        const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 1);
-        hemi.position.set(0, 1, 0);
-        scene.add(hemi);
-        const dir = new THREE.DirectionalLight(0xffffff, 0.8);
-        dir.position.set(5, 10, 7.5);
-        scene.add(dir);
-
-        clock = new THREE.Clock();
-
-        if (modelUrl) {
-          const loader = new GLTFLoader();
-          loader.load(
-            modelUrl,
-            (gltf) => {
-              if (!mounted) return;
-              const root = gltf.scene || gltf.scenes[0];
-              // center and scale
-              const box = new THREE.Box3().setFromObject(root);
-              const size = box.getSize(new THREE.Vector3()).length();
-              const center = box.getCenter(new THREE.Vector3());
-              root.position.x += (root.position.x - center.x);
-              root.position.y += (root.position.y - center.y);
-              root.position.z += (root.position.z - center.z);
-              const scale = 1.5 / size;
-              root.scale.setScalar(scale);
-
-              scene.add(root);
-
-              if (gltf.animations && gltf.animations.length) {
-                mixer = new THREE.AnimationMixer(root);
-                gltf.animations.forEach((clip) => mixer.clipAction(clip).play());
-              }
-            },
-            undefined,
-            (err) => {
-              console.error('Failed to load 3D model', err);
-            }
-          );
-        }
-
-        function animate() {
-          const dt = clock.getDelta();
-          if (mixer) mixer.update(dt);
+        const controls = new THREE.Object3D();
+        scene.add(controls);
+        let rotY = 0;
+        const animate = () => {
+          requestAnimationFrame(animate);
+          if (!error) {
+            rotY += 0.01;
+            controls.rotation.y = rotY;
+          }
           renderer.render(scene, camera);
-          requestId = requestAnimationFrame(animate);
-        }
-
+        };
         animate();
 
-        function handleResize() {
-          const w = mountRef.current.clientWidth;
-          const h = mountRef.current.clientHeight;
-          camera.aspect = w / h;
-          camera.updateProjectionMatrix();
-          renderer.setSize(w, h);
-        }
-
-        window.addEventListener('resize', handleResize);
-
-        return () => {
-          mounted = false;
-          window.removeEventListener('resize', handleResize);
-          if (requestId) cancelAnimationFrame(requestId);
-          if (renderer) renderer.dispose();
+        const handleResize = () => {
+          if (mountRef.current) {
+            const width = mountRef.current.clientWidth;
+            const height = mountRef.current.clientHeight;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+          }
         };
-      }
+        window.addEventListener('resize', handleResize);
+        return () => {
+          window.removeEventListener('resize', handleResize);
+          if (mountRef.current) mountRef.current.innerHTML = '';
+        };
+      }, [modelUrl]);
 
-      const cleanupPromise = init();
-      return () => {
-        // nothing here; init returns cleanup via closures
-      };
-    }, [modelUrl, mountRef]);
-  }
-
-  // mount ref for 3D viewer
-  const viewerRef = useRef(null);
-  useThreeViewer(selectedProduct ? selectedProduct.modelUrl : null, viewerRef);
-
-  return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <header className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold">Catalog Webapp</h1>
-          <div className="flex gap-2">
-            <button className="px-3 py-1 rounded-md border">Iniciar sesión</button>
-            <button className="px-3 py-1 rounded-md bg-blue-600 text-white">Carrito (0)</button>
-          </div>
+      return (
+        <div className="relative w-full h-64 bg-gray-100 rounded-lg overflow-hidden">
+          {error ? (
+            <div className="absolute inset-0 flex items-center justify-center text-red-600">{error}</div>
+          ) : (
+            <div ref={mountRef} className="w-full h-full"></div>
+          )}
         </div>
+      );
+    }
 
-        {/* Suppliers / categories */}
-        <div className="flex gap-3 mb-6 overflow-x-auto">
-          <button
-            onClick={() => setActiveSupplier(null)}
-            className={`px-4 py-2 rounded-md border ${activeSupplier===null? 'bg-slate-800 text-white':''}`}>
-            Todas
-          </button>
-          {suppliers.map((s) => (
-            <button key={s.id} onClick={() => setActiveSupplier(s.id)} className={`px-4 py-2 rounded-md ${s.color}`}>
-              {s.name}
+    // Componente principal
+    function CatalogWebapp() {
+      const suppliers = [
+        { id: "samsung", name: "Samsung", color: "bg-blue-500" },
+        { id: "tesla", name: "Tesla", color: "bg-red-500" },
+        { id: "apple", name: "Apple", color: "bg-gray-800 text-white" },
+        { id: "acme", name: "Acme Corp", color: "bg-green-600" },
+      ];
+
+      const products = [
+        {
+          id: "p1",
+          supplier: "samsung",
+          title: "Galaxy Super TV",
+          price: "$1,299",
+          img: "https://images.unsplash.com/photo-1555617117-08fda6c3d8b4?w=300&auto=format&fit=crop",
+          featured: true,
+          modelUrl: "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Duck/glTF/Duck.gltf"
+        },
+        {
+          id: "p2",
+          supplier: "tesla",
+          title: "Model Z Toy Car",
+          price: "$249",
+          img: "https://images.unsplash.com/photo-1511919884226-fd3cad34687c?w=300&auto=format&fit=crop",
+          featured: true,
+          modelUrl: ""
+        },
+        {
+          id: "p3",
+          supplier: "apple",
+          title: "Phone Pro Max",
+          price: "$999",
+          img: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&auto=format&fit=crop",
+          featured: false,
+          modelUrl: ""
+        },
+        {
+          id: "p4",
+          supplier: "acme",
+          title: "Industrial Widget",
+          price: "$49",
+          img: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=300&auto=format&fit=crop",
+          featured: false,
+          modelUrl: ""
+        }
+      ];
+
+      const [selectedSupplier, setSelectedSupplier] = React.useState(null);
+      const filteredProducts = selectedSupplier
+        ? products.filter(p => p.supplier === selectedSupplier)
+        : products.filter(p => p.featured);
+
+      return (
+        <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+          <header className="text-center mb-10">
+            <h1 className="text-3xl font-bold text-gray-800">Catálogo 3D</h1>
+            <p className="text-gray-600">Explora productos por proveedor</p>
+          </header>
+
+          {/* Proveedores (Categorías) */}
+          <div className="flex flex-wrap gap-3 justify-center mb-8">
+            <button
+              onClick={() => setSelectedSupplier(null)}
+              className={`px-4 py-2 rounded-full font-medium ${!selectedSupplier ? 'bg-indigo-600 text-white' : 'bg-gray-200'}`}
+            >
+              Destacados
             </button>
-          ))}
-        </div>
-
-        {/* Featured carousel */}
-        <section className="mb-8">
-          <h2 className="text-xl font-semibold mb-3">Destacados</h2>
-          <div className="relative max-w-6xl mx-auto bg-white rounded-lg shadow p-4">
-            {featured.length === 0 ? (
-              <div className="p-8 text-center">No hay productos destacados</div>
-            ) : (
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setFeaturedIndex((i) => (i - 1 + featured.length) % featured.length)}
-                  className="px-3 py-2 border rounded">◀</button>
-
-                <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                  {featured.map((f, idx) => (
-                    <div key={f.id} className={`${idx === featuredIndex ? 'block' : 'hidden'} md:block`}>
-                      <div className="flex flex-col md:flex-row items-center gap-4">
-                        <img src={f.img} alt={f.title} className="w-full md:w-48 h-36 object-cover rounded" />
-                        <div>
-                          <h3 className="font-semibold">{f.title}</h3>
-                          <p className="text-sm">{f.price}</p>
-                          <div className="mt-2">
-                            <button onClick={() => setSelectedProduct(f)} className="px-3 py-1 border rounded mr-2">Ver</button>
-                            <button className="px-3 py-1 bg-green-600 text-white rounded">Comprar</button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  onClick={() => setFeaturedIndex((i) => (i + 1) % featured.length)}
-                  className="px-3 py-2 border rounded">▶</button>
-              </div>
-            )}
+            {suppliers.map(s => (
+              <button
+                key={s.id}
+                onClick={() => setSelectedSupplier(s.id)}
+                className={`px-4 py-2 rounded-full font-medium ${selectedSupplier === s.id ? 'bg-indigo-600 text-white' : s.color}`}
+              >
+                {s.name}
+              </button>
+            ))}
           </div>
-        </section>
 
-        {/* Products grid */}
-        <section className="mb-10">
-          <h2 className="text-xl font-semibold mb-3">Productos {activeSupplier ? `de ${suppliers.find(s=>s.id===activeSupplier)?.name}` : ''}</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {visibleProducts.map((p) => (
-              <div key={p.id} className="bg-white rounded shadow p-3 flex flex-col">
-                <img src={p.img} alt={p.title} className="w-full h-40 object-cover rounded mb-3" />
-                <div className="flex-1">
-                  <h3 className="font-semibold">{p.title}</h3>
-                  <p className="text-sm text-gray-500">{p.price}</p>
-                </div>
-                <div className="mt-3 flex gap-2">
-                  <button onClick={() => setSelectedProduct(p)} className="flex-1 px-3 py-2 border rounded">Ver</button>
-                  <button className="px-3 py-2 bg-blue-600 text-white rounded">+</button>
+          {/* Productos */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProducts.map(p => (
+              <div key={p.id} className="bg-white rounded-xl shadow-md overflow-hidden">
+                <img src={p.img} alt={p.title} className="w-full h-48 object-cover" />
+                <div className="p-4">
+                  <h3 className="font-bold text-lg">{p.title}</h3>
+                  <p className="text-gray-600">{p.price}</p>
+                  {p.modelUrl && <ModelViewer modelUrl={p.modelUrl} />}
                 </div>
               </div>
             ))}
           </div>
-        </section>
+        </div>
+      );
+    }
 
-        {/* Product detail / 3D viewer */}
-        {selectedProduct && (
-          <section className="mb-10 bg-white rounded shadow p-4">
-            <div className="flex gap-4">
-              <div className="w-1/3">
-                <img src={selectedProduct.img} alt={selectedProduct.title} className="w-full h-60 object-cover rounded" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-2xl font-bold">{selectedProduct.title}</h3>
-                <p className="text-lg text-green-600">{selectedProduct.price}</p>
-                <p className="mt-2 text-sm text-gray-700">Proveedor: {suppliers.find(s=>s.id===selectedProduct.supplier)?.name}</p>
-
-                <div className="mt-4 flex gap-2">
-                  <button className="px-4 py-2 bg-blue-600 text-white rounded">Agregar al carrito</button>
-                  <button onClick={() => setSelectedProduct(null)} className="px-4 py-2 border rounded">Cerrar</button>
-                </div>
-
-                <div className="mt-6">
-                  <h4 className="font-semibold mb-2">Visor 3D</h4>
-                  <div ref={viewerRef} style={{ width: '100%', height: 360 }} className="rounded border" />
-                  {!selectedProduct.modelUrl && (
-                    <p className="text-sm text-gray-500 mt-2">No hay un modelo 3D configurado para este producto. Puedes colocar una URL pública de GLTF/GLB para mostrarlo aquí.</p>
-                  )}
-                </div>
-
-              </div>
-            </div>
-          </section>
-        )}
-
-        <footer className=\"text-center text-sm text-gray-500 py-6\">Demo creada para tu catálogo — reemplaza imágenes, datos y modelos por los tuyos.</footer>
-
-/*
---- Añadido: archivo "index.html" (listo para GitHub Pages)
-A continuación incluí un ejemplo de `index.html` que funciona como "main" para desplegar en GitHub Pages.
-Copia este archivo en la raíz de tu repo (reemplaza el contenido del canvas si querés) y publica desde la rama `main` o `gh-pages`.
-*/
-
-/* index.html (usa React + Tailwind via CDN y el componente en un <script type="module">) */
-
-<!--
-Guía rápida para deploy en GitHub Pages:
-1. Crea un repo en GitHub con tu proyecto.
-2. Añade este `index.html` en la raíz y cualquier asset (imágenes/modelos) en carpetas.
-3. Haz commit y push a la rama `main`.
-4. Ve a Settings -> Pages -> Source: `main` branch -> root -> Save.
-5. Tu sitio quedará disponible en https://<tu-usuario>.github.io/<tu-repo>/
--->
-
-<!doctype html>
-<html lang="es">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Catalog Webapp - Demo</title>
-    <!-- Tailwind CDN para demo rápida -->
-    <script src="https://cdn.tailwindcss.com"></script>
-  </head>
-  <body class="bg-gray-50">
-    <div id="root"></div>
-
-    <!-- React + ReactDOM desde CDN -->
-    <script type="module">
-      import React from 'https://cdn.jsdelivr.net/npm/react@18.2.0/+esm';
-      import ReactDOM from 'https://cdn.jsdelivr.net/npm/react-dom@18.2.0/+esm';
-
-      // --- Pega aquí el contenido del componente React export default function CatalogWebapp() { ... }
-      // En el canvas ya está el componente principal (cópialo dentro de este script en una variable `CatalogWebapp`)
-
-      // Para tu comodidad, aquí hacemos un ejemplo mínimo que renderiza el componente del canvas.
-      // Si querés, puedo pegar el componente completo en este index.html — decime si querés eso.
-
-      const App = () => React.createElement('div', {className:'p-8'}, 'Arranca tu app: pega el componente React en este archivo (module) o usa bundler como Vite.');
-
-      ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
-    </script>
-  </body>
+    // Render principal
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(React.createElement(CatalogWebapp));
+  </script>
+</head>
+<body class="m-0">
+  <div id="root" class="min-h-screen bg-gray-100">Cargando...</div>
+</body>
 </html>
